@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Busca de Times</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .team-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .team {
+            width: 150px;
+            text-align: center;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .team img {
+            width: 70px;
+            height: 70px;
+            margin-bottom: 10px;
+        }
+        .team a {
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Busca de Times</h1>
+
+    <!-- Campo de pesquisa do nome do time -->
+    <input type="text" id="search" placeholder="Digite o nome do time..." />
+    
+    <!-- Dropdown para selecionar o esporte -->
+    <select name="sport_id" id="sport_id" class="form-control">
+        <option value="0">All Sports</option>
+        <option value="1">Soccer</option>
+        <option value="3">Cricket</option>
+        <option value="8">Rugby Union</option>
+        <option value="12">American Football</option>
+        <option value="13">Tennis</option>
+        <option value="14">Snooker</option>
+        <option value="16">Baseball</option>
+        <option value="17">Ice Hockey</option>
+        <option value="18">Basketball</option>
+        <option value="19">Rugby League</option>
+        <option value="36">Australian Rules</option>
+        <option value="78">Handball</option>
+        <option value="83">Futsal</option>
+        <option value="91">Volleyball</option>
+        <option value="92">Table Tennis</option>
+        <option value="94">Badminton</option>
+        <option value="151">Esports</option>
+    </select>
+
+    <!-- Botão de pesquisa -->
+    <button id="searchBtn">Pesquisar</button>
+
+    <!-- Lista de times -->
+    <div class="team-list" id="team-list"></div>
+    <div id="output"></div>
+
+    <script>
+        const searchInput = document.getElementById('search');
+        const teamList = document.getElementById('team-list');
+        const searchButton = document.getElementById('searchBtn');
+        const sportSelect = document.getElementById('sport_id');
+
+        // Função para exibir e atualizar os times conforme a busca
+        const searchTeams = async () => {
+            const query = searchInput.value.trim();
+            const sportId = sportSelect.value;
+
+            // Verificar se o campo de busca não está vazio
+            if (query.length === 0) {
+                teamList.innerHTML = ''; // Limpar a lista
+                return;
+            }
+
+            // Substitui espaços por '+' na query
+            const formattedQuery = query.replace(/\s+/g, '+');
+            
+            // URL de pesquisa
+            const url = `https://www.thesportsdb.com/search.php?s=${formattedQuery}`;
+
+            try {
+                // Fazer a requisição à página de busca
+                const response = await fetch(url);
+                const text = await response.text();
+
+                // Utilizar DOMParser para analisar o HTML retornado
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+
+                // Extrair todos os elementos de time
+                const teamLinks = doc.querySelectorAll('.col-sm-1 a');
+
+                // Limpar a lista antes de preencher
+                teamList.innerHTML = '';
+
+                if (teamLinks.length > 0) {
+                    // Criar a lista de times
+                    teamLinks.forEach(link => {
+                        const teamElement = document.createElement('div');
+                        teamElement.classList.add('team');
+
+                        const teamName = link.textContent.trim();
+                        const teamImage = link.querySelector('img').src;
+                        const teamUrl = link.href;
+
+                        // Preencher o HTML com os dados
+                        teamElement.innerHTML = ` 
+                            <a href="javascript:void(0);" onclick="selectTeam('${teamName}', '${teamUrl}')">
+                                <img src="${teamImage}" alt="${teamName}">
+                                <p>${teamName}</p>
+                            </a>
+                        `;
+                        teamList.appendChild(teamElement);
+                    });
+                } else {
+                    teamList.innerHTML = '<p>Nenhum time encontrado.</p>';
+                }
+            } catch (error) {
+                console.error('Erro ao buscar dados:', error);
+                teamList.innerHTML = '<p>Erro ao buscar dados.</p>';
+            }
+        };
+
+        // Função para selecionar um time
+        const selectTeam = (teamName, teamUrl) => {
+            // Coloca o nome do time no campo de texto
+            searchInput.value = teamName;
+
+            // Exibe o link exato do time no console ou em outro lugar
+            console.log(`Link do time selecionado: ${teamUrl}`);
+
+            // Limpa a lista de times e não permite mais clicar em outros times até alterar o campo
+            teamList.innerHTML = '';
+        };
+
+        // Função para pesquisar o time no site de IDs (betsapi)
+        const searchTeamId = async () => {
+            const teamName = searchInput.value.trim();
+            const sportId = sportSelect.value;
+
+            // Verificar se o campo de busca e o esporte foram selecionados
+            if (teamName.length === 0) {
+                alert("Digite o nome do time.");
+                return;
+            }
+
+            document.getElementById('searchBtn').addEventListener('click', fetchData);
+
+        
+         async function fetchData() {
+            const formattedQuery = teamName.replace(/\s+/g, '+');
+            const sportId = sportSelect.value;
+
+            const proxyUrl = 'http://localhost:8080/';
+            const apiUrl = `https://betsapi.com/search/?sport_id=${sportId}&q=${formattedQuery}`;  
+            const fullUrl = proxyUrl + apiUrl;
+
+                try {
+                    const response = await fetch(fullUrl);
+                    const text = await response.text(); // Obter a resposta como texto (HTML)
+
+                    // Exibir a resposta HTML no div de saída
+                    document.getElementById('output').innerHTML = text;
+
+                    console.log('Conteúdo HTML recebido:');
+                    console.log(text);  // Para fins de depuração, você pode ver o HTML no console
+                    // Agora, você pode buscar o ul e o texto do dropdown
+           // Agora, você pode buscar o ul e o texto do dropdown
+           function formatText(text) {
+        return text.trim().replace(/\s+/g, ' ').replace(/\s*\[(.*?)\]\s*/g, '[$1]').replace(/\s*\((.*?)\)\s*/g, '($1)');
+    }
+        const teamList = document.querySelectorAll("ul li a"); // Seleciona todos os links dentro de li em ul
+
+        teamList.forEach(link => {
+
+            const sportSelect = document.getElementById("sport_id");  // Supondo que o seu select tenha esse id
+const selectedSportText = sportSelect.options[sportSelect.selectedIndex].text;
+
+const teamName = searchInput.value.trim();
+
+            // Formatar o texto do link
+            const formattedLinkText = formatText(link.textContent);
+
+            // Agora, vamos buscar e concatenar o esporte e o nome do time
+            const sportText = link.previousElementSibling ? link.previousElementSibling.textContent.trim() : ""; // Supondo que o esporte seja o elemento anterior ao link
+
+            // Exibe o texto concatenado no console
+            if (sportText && formattedLinkText) {
+                if (sportText == selectedSportText && formattedLinkText == teamName){
+                console.log(`${sportText} - ${formattedLinkText} ------ ${selectedSportText} - ${teamName}`);
+                console.log("Link encontrado para o time:", link.href);
+                // Coloca o nome do time no campo de texto
+                // Extrai o path da URL original (parte após o domínio)
+const path = new URL(link.href).pathname;
+
+// Adiciona o novo domínio (betsapi.com)
+const newUrl = `https://betsapi.com${path}`;
+
+// Exibe o novo link no console
+console.log("Link encontrado para o time:", newUrl);
+                    
+                }
+            }
+
+        });
+
+                } catch (error) {
+                    console.error('Erro ao buscar dados:', error);
+                    document.getElementById('output').textContent = 'Erro ao buscar dados: ' + error.message;
+                }
+            }}
+
+        // Evento de input para capturar o que é digitado
+        searchInput.addEventListener('input', searchTeams);
+
+        // Evento de clique no botão de pesquisa
+        searchButton.addEventListener('click', searchTeamId);
+    </script>
+</body>
+</html>
