@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Busca de Times</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .team-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .team {
+            width: 150px;
+            text-align: center;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .team img {
+            width: 70px;
+            height: 70px;
+            margin-bottom: 10px;
+        }
+        .team a {
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Busca de Times</h1>
+
+    <!-- Campo de pesquisa do nome do time -->
+    <input type="text" id="search" placeholder="Digite o nome do time..." />
+    
+    <!-- Dropdown para selecionar o esporte -->
+    <select name="sport_id" id="sport_id" class="form-control">
+        <option value="0">All Sports</option>
+        <option value="1">Soccer</option>
+        <option value="3">Cricket</option>
+        <option value="8">Rugby Union</option>
+        <option value="12">American Football</option>
+        <option value="13">Tennis</option>
+        <option value="14">Snooker</option>
+        <option value="16">Baseball</option>
+        <option value="17">Ice Hockey</option>
+        <option value="18">Basketball</option>
+        <option value="19">Rugby League</option>
+        <option value="36">Australian Rules</option>
+        <option value="78">Handball</option>
+        <option value="83">Futsal</option>
+        <option value="91">Volleyball</option>
+        <option value="92">Table Tennis</option>
+        <option value="94">Badminton</option>
+        <option value="151">Esports</option>
+    </select>
+
+    <!-- Botão de pesquisa -->
+    <button id="searchBtn">Pesquisar</button>
+
+    <!-- Lista de times -->
+    <div class="team-list" id="team-list"></div>
+    <div id="output"></div>
+
+
+      <!-- Nova tabela para as 3 linhas específicas -->
+      <table id="specificResultTable">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Esporte</th>
+                <th>Link</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- As 3 linhas específicas serão adicionadas aqui -->
+        </tbody>
+    </table>
+
+    <!-- Tabela de resultados -->
+    <table id="resultTable">
+        <thead>
+            <tr>
+                <th>Coluna 1</th>
+                <th>Coluna 2</th>
+                <th>Coluna 3</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Linhas serão adicionadas aqui -->
+        </tbody>
+    </table>
+
+    <script>
+        const searchInput = document.getElementById('search');
+        const teamList = document.getElementById('team-list');
+        const searchButton = document.getElementById('searchBtn');
+        const sportSelect = document.getElementById('sport_id');
+    
+        // Função para exibir e atualizar os times conforme a busca
+        const searchTeams = async () => {
+            const query = searchInput.value.trim();
+            const sportId = sportSelect.value;
+    
+            // Verificar se o campo de busca não está vazio
+            if (query.length === 0) {
+                teamList.innerHTML = ''; // Limpar a lista
+                return;
+            }
+    
+            // Substitui espaços por '+' na query
+            const formattedQuery = query.replace(/\s+/g, '+');
+            
+            // URL de pesquisa
+            const url = `https://www.thesportsdb.com/search.php?s=${formattedQuery}`;
+    
+            try {
+                // Fazer a requisição à página de busca
+                const response = await fetch(url);
+                const text = await response.text();
+    
+                // Utilizar DOMParser para analisar o HTML retornado
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+    
+                // Extrair todos os elementos de time
+                const teamLinks = doc.querySelectorAll('.col-sm-1 a');
+    
+                // Limpar a lista antes de preencher
+                teamList.innerHTML = '';
+    
+                if (teamLinks.length > 0) {
+                    // Criar a lista de times
+                    teamLinks.forEach(link => {
+                        const teamElement = document.createElement('div');
+                        teamElement.classList.add('team');
+    
+                        const teamName = link.textContent.trim();
+                        const teamImage = link.querySelector('img').src;
+                        const teamUrl = link.href;
+    
+                        // Preencher o HTML com os dados
+                        teamElement.innerHTML = ` 
+                            <a href="javascript:void(0);" onclick="selectTeam('${teamName}', '${teamUrl}')">
+                                <img src="${teamImage}" alt="${teamName}">
+                                <p>${teamName}</p>
+                            </a>
+                        `;
+                        teamList.appendChild(teamElement);
+                    });
+                } else {
+                    teamList.innerHTML = '<p>Nenhum time encontrado.</p>';
+                }
+            } catch (error) {
+                console.error('Erro ao buscar dados:', error);
+                teamList.innerHTML = '<p>Erro ao buscar dados.</p>';
+            }
+        };
+    
+        // Função para selecionar um time
+        const selectTeam = (teamName, teamUrl) => {
+            // Coloca o nome do time no campo de texto
+            searchInput.value = teamName;
+    
+            // Exibe o link exato do time no console ou em outro lugar
+            console.log(`Link do time selecionado: ${teamUrl}`);
+    
+            // Limpa a lista de times e não permite mais clicar em outros times até alterar o campo
+            teamList.innerHTML = '';
+        };
+    
+        // Função para pesquisar o time no site de IDs (betsapi)
+        const searchTeamId = async () => {
+            const teamName = searchInput.value.trim();
+            const sportId = sportSelect.value;
+    
+            // Verificar se o campo de busca e o esporte foram selecionados
+            if (teamName.length === 0) {
+                alert("Digite o nome do time.");
+                return;
+            }
+    
+            document.getElementById('searchBtn').addEventListener('click', fetchData);
+    
+            async function fetchData() {
+                const formattedQuery = teamName.replace(/\s+/g, '+');
+                const sportId = sportSelect.value;
+    
+                const proxyUrl = 'http://localhost:8080/';
+                const apiUrl = `https://betsapi.com/search/?sport_id=${sportId}&q=${formattedQuery}`;
+                const fullUrl = proxyUrl + apiUrl;
+    
+                try {
+                    const response = await fetch(fullUrl);
+                    const text = await response.text(); // Obter a resposta como texto (HTML)
+    
+                    // Exibir a resposta HTML no div de saída
+                    document.getElementById('output').innerHTML = text;
+    
+                    console.log('Conteúdo HTML recebido:');
+                    console.log(text);
+    
+                    // Função para formatar texto
+                    function formatText(inputText) {
+                        return inputText
+                            .trim()
+                            .replace(/\s+/g, ' ')
+                            .replace(/\s*\[(.*?)\]\s*/g, '[$1]')
+                            .replace(/\s*\((.*?)\)\s*/g, '($1)');
+                    }
+    
+                    // Selecionar todos os links dentro de "ul li"
+                    const teamList = document.querySelectorAll('ul li a');
+    
+                    teamList.forEach(async (link) => {
+                        const sportSelect = document.getElementById('sport_id');
+                        const selectedSportText =
+                            sportSelect.options[sportSelect.selectedIndex].text;
+    
+                        const teamName = searchInput.value.trim();
+                        const formattedLinkText = formatText(link.textContent);
+    
+                        // Buscar o esporte relacionado ao link
+                        const sportText = link.previousElementSibling
+                            ? link.previousElementSibling.textContent.trim()
+                            : '';
+    
+                        // Comparar esporte e nome do time com os valores selecionados
+if (sportText === selectedSportText && formattedLinkText === teamName) {
+    console.log(
+        `${sportText} - ${formattedLinkText} ------ ${selectedSportText} - ${teamName}`
+    );
+
+    
+    const path1= new URL(link.href).pathname;
+    const newUrl1 = `https://betsapi.com${path1}/`;
+    const completeUrl1 = proxyUrl + newUrl1;
+    console.log('Link encontrado para o timkkke:',completeUrl1);
+
+
+    const originalLink = link.href; // Guardar o link original com '/t/'
+
+    const fetchOriginalTables = async () => {
+    try {
+        const response = await fetch(completeUrl1);
+        if (!response.ok) {
+            throw new Error(`Erro ao acessar a URL original: ${response.status}`);
+        }
+
+        const text = await response.text();
+        console.log(text);
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+        
+        const tbodyRows = doc.querySelectorAll('tbody tr');
+
+        // Seleciona a tabela específica no HTML
+        const specificTableBody = document.querySelector('#specificResultTable tbody');
+        
+        // Limpa as linhas existentes (caso haja algum dado anterior)
+        specificTableBody.innerHTML = '';
+
+        // Preenche as três primeiras linhas na tabela #specificResultTable
+        tbodyRows.forEach((row, index) => {
+            if (index < 3) {  // Verifica se está entre as três primeiras linhas
+                const newRow = document.createElement('tr');
+                newRow.innerHTML = row.innerHTML;
+                specificTableBody.appendChild(newRow);
+            }
+});
+
+            return originalTable; // Retornar a tabela encontrada
+        } catch (error) {
+            console.error('Erro ao buscar tabelas do link original:', error);
+            return null; // Retornar null em caso de erro
+        }
+    };
+
+    // Substituir '/t/' por '/te/'
+    link.href = link.href.replace('/t/', '/te/');
+    console.log('Link atualizado para /te/:', link.href);
+
+    // document.getElementById(
+    //     'output'
+    // ).textContent = `Link encontrado para o time: ${link.href}`;
+
+    const path = new URL(link.href).pathname;
+    const newUrl = `https://betsapi.com${path}/p.1`;
+    const completeUrl = proxyUrl + newUrl;
+
+    console.log('Novo completado link para o time:', completeUrl);
+
+    // Função para buscar as páginas P.1 a P.4
+    const fetchPages = async () => {
+        const pages = [1, 2, 3, 4];
+        const allTables = [];
+
+        // Adicionar tabela do link original (/t/) primeiro
+        const originalTable = await fetchOriginalTables();
+        if (originalTable) {
+            allTables.push(originalTable);
+        }
+
+        for (const page of pages) {
+            try {
+                const pageUrl = `${completeUrl.replace('p.1', `p.${page}`)}`;
+                console.log('Nova consulta:', pageUrl);
+                const newResponse = await fetch(pageUrl);
+                if (!newResponse.ok) {
+                    throw new Error(`Erro na solicitação: ${newResponse.status}`);
+                }
+
+                const newText = await newResponse.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(newText, 'text/html');
+
+                const tbodyRows = doc.querySelectorAll('tbody tr');
+                const table = document.createElement('table');
+                table.style.width = '100%';
+                table.border = '1';
+
+                tbodyRows.forEach((row) => {
+                    const newRow = document.createElement('tr');
+                    newRow.innerHTML = row.innerHTML;
+                    table.appendChild(newRow);
+                });
+
+                allTables.push(table); // Armazenar a tabela
+            } catch (error) {
+                console.error('Erro ao buscar dados da página:', error);
+            }
+        }
+
+        // Exibir todas as tabelas no HTML
+        const outputDiv = document.getElementById('output');
+        outputDiv.innerHTML = ''; // Limpar a saída anterior
+        if (allTables.length > 0) {
+            allTables.forEach((table) => {
+                outputDiv.appendChild(table);
+            });
+        } else {
+            outputDiv.textContent = 'Nenhuma tabela encontrada.';
+        }
+        fetchAndSumGoals();
+
+    };
+
+    // Chama a função para buscar as páginas P.1 a P.4
+    fetchPages();
+
+                        }
+                    });
+                } catch (error) {
+                    console.error('Erro ao buscar dados:', error);
+                    document.getElementById('output').textContent =
+                        'Erro ao buscar dados: ' + error.message;
+                }
+            }
+        };
+    
+        // Evento de input para capturar o que é digitado
+        searchInput.addEventListener('input', searchTeams);
+    
+        // Evento de clique no botão de pesquisa
+        searchButton.addEventListener('click', searchTeamId);
+
+      async function fetchAndSumGoals() {
+    const rows = document.querySelectorAll('table tr'); 
+    let totalGoals = 0;
+let totalMatches = 0;
+let requestCount = 0;  // Contador de requisições
+
+for (const row of rows) {
+    const cells = row.querySelectorAll('td');
+    if (cells.length >= 6) {
+        const link = cells[5].querySelector('a');
+        if (link) {
+            const href = link.href.replace("http://127.0.0.1:5500", "http://localhost:8080/https://betsapi.com");
+            
+            try {
+                await new Promise(resolve => setTimeout(resolve, 3000)); // Espera 3 segundos entre cada requisição
+                console.log("Acessando os dados do link: ", href);
+                
+                const response = await fetch(href)  
+
+                if (!response.ok) {
+                    throw new Error(`Erro ao acessar link: ${response.status}`);
+                }
+
+                const text = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+
+                const goalsRow = [...doc.querySelectorAll('tr')].find(tr => 
+                    tr.textContent.includes('Goals')
+                );
+
+                if (goalsRow) {
+                    const goalsCell = goalsRow.querySelectorAll('td')[2];
+                    const goals = parseInt(goalsCell.textContent.trim(), 10);
+                    if (!isNaN(goals)) {
+                        totalGoals += goals;
+                        totalMatches++;
+                    }
+                }
+
+                // Contabiliza a requisição
+                requestCount++;
+                console.log('Contador', requestCount)
+                // Parar quando atingir 30 requisições
+                if (requestCount >= 30) {
+                    console.log('Limite de 30 requisições atingido.');
+                    break;  // Interrompe o loop
+                }
+
+            } catch (err) {
+                console.error(`Erro ao acessar a página: ${href}`, err);
+            }
+        }
+    }
+}
+
+console.log(`Total de Gols: ${totalGoals}`);
+console.log(`Total de Partidas: ${totalMatches}`);
+ }
+
+
+
+    </script>
+    
+</body>
+</html>

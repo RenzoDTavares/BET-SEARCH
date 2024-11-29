@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Estatísticas dos Jogos</title>
+</head>
+<body>
+    <h1>Média das Estatísticas dos Jogos</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Estatística</th>
+                <th>Time 1 (Média)</th>
+                <th>Time 2 (Média)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stat, values in data.items %}
+            <tr>
+                <td>{{ stat }}</td>
+                <td>{{ values.0|floatformat:2 }}</td>
+                <td>{{ values.1|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

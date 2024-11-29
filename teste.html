@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Dados dos Jogos</title>
+    <style>
+        table { width: 80%; margin: 20px auto; border-collapse: collapse; }
+        th, td { border: 1px solid #000; padding: 8px; text-align: center; }
+        h1, .average { text-align: center; }
+    </style>
+    <script>
+        const proxyUrl = 'http://localhost:8080/';  // Proxy para contornar CORS
+        const urls = [
+            'https://betsapi.com/r/8671360/DEN-Nuggets-vs-LA-Lakers',
+            'https://betsapi.com/r/8671055/DAL-Mavericks-vs-DEN-Nuggets',
+            'https://betsapi.com/r/8671042/DEN-Nuggets-vs-MEM-Grizzlies',
+            'https://betsapi.com/r/8670976/DEN-Nuggets-vs-NO-Pelicans',
+            'https://betsapi.com/r/8671338/DAL-Mavericks-vs-DEN-Nuggets',
+
+            //'https://betsapi.com/r/8671141/NY-Knicks-vs-DAL-Mavericks',
+            // 'https://betsapi.com/r/8671247/NY-Knicks-vs-DEN-Nuggets',
+            // 'https://betsapi.com/r/8671182/NY-Knicks-vs-UTA-Jazz',
+            // 'https://betsapi.com/r/8671143/NY-Knicks-vs-PHX-Suns',
+            // 'https://betsapi.com/r/8671401/WAS-Wizards-vs-NY-Knicks',
+        ];
+
+        // Estatísticas fornecidas
+        const statsKeys = [
+            '3 Pts', '2 Pts', 'Ft', 'Time Outs#T.O', 'Fouls',
+            'Ft %', 'Successful Attempts', 'Max Points in a Row', 
+            'Biggest lead', 'Lead changes', 'Time spent in lead', 'Possession %'
+        ];
+
+        
+        async function fetchData(url) {
+    try {
+        const response = await fetch(proxyUrl + url);
+        const data = await response.text();
+        
+        // Aguardar 3 segundos antes de continuar
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        return data;
+    } catch (error) {
+        console.error('Erro ao buscar os dados:', error);
+        return null;
+    }
+}
+
+
+        function parseTime(timeString) {
+            const [hours, minutes] = timeString.split(':').map(val => parseInt(val, 10));
+            return hours * 60 + minutes;  // Converte para minutos
+        }
+
+        async function loadTables() {
+    let allTablesHTML = '';
+    let stats = [];
+    let statsSum = {};
+    let statsCount = 0;
+    let timeSum = 0;
+
+    // Inicializa o somador para cada estatística
+    statsKeys.forEach(stat => statsSum[stat] = 0);
+
+    // Processa cada URL
+    for (const url of urls) {
+        const data = await fetchData(url);
+        if (data) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(data, 'text/html');
+            const table = doc.querySelector('tbody');
+
+            // Exibe a tabela original sem alterações
+            allTablesHTML += '<table border="1"><thead><tr><th>Equipe 1</th><th>Estatísticas</th><th>Equipe 2</th></tr></thead><tbody>';
+            allTablesHTML += table.innerHTML;
+            allTablesHTML += '</tbody></table><br>';
+
+            // Extrai valores das estatísticas
+            let gameStats = {};  // Armazena os valores das estatísticas para este jogo
+
+            const rows = table.querySelectorAll('tr');
+            let team1 = '';  // Variável para armazenar o nome do time 1
+            let team2 = '';  // Variável para armazenar o nome do time 2
+
+            rows.forEach((row, index) => {
+                const cells = row.querySelectorAll('td');
+
+                if (cells.length > 1) {
+                    if (index === 0) {
+                        // A primeira linha contém os nomes dos times
+                        team1 = cells[0].innerText.trim();
+                        team2 = cells[2].innerText.trim();
+                    } else if (index < statsKeys.length + 1) {  // Ajuste no índice para pegar as estatísticas
+                        const statIndex = index - 1;  // Ajuste no índice para não ultrapassar o tamanho das estatísticas
+                        const homeValue = parseFloat(cells[0].innerText.trim()) || 0;
+                        const awayValue = parseFloat(cells[2].innerText.trim()) || 0;
+
+                        // Exibe o nome do time e o valor da célula para cada estatística
+                        console.log(`${statsKeys[statIndex]} (${team1}): ${homeValue}`);
+                        console.log(`${statsKeys[statIndex]} (${team2}): ${awayValue}`);
+
+                        // Armazena os valores no objeto de estatísticas
+                        gameStats[statsKeys[statIndex]] = { home: homeValue, away: awayValue };
+
+                        // Atualiza o somatório para médias
+                        statsSum[statsKeys[statIndex]] += homeValue + awayValue;
+                    }
+                }
+            });
+
+            // Processa o tempo gasto em liderança (Time spent in lead)
+            const timeCell = rows[11]?.querySelectorAll('td')[0];
+            if (timeCell) {
+                const timeValue = timeCell.innerText.trim();
+                timeSum += parseTime(timeValue);
+            }
+
+            stats.push(gameStats);  // Armazena as estatísticas desse jogo
+            statsCount++;
+        }
+    }
+
+    // Agora, calcula a média das estatísticas
+    let averageHTML = '<h2>Média das Estatísticas</h2><table><tr><th>Estatística</th><th>Média</th></tr>';
+    for (const stat in statsSum) {
+        let average = 0;
+        // Ajuste para as estatísticas percentuais e de tempo
+        if (stat === 'Ft %' || stat === 'Possession %') {
+            average = (statsSum[stat] / statsCount).toFixed(2);
+        } else if (stat === 'Time spent in lead') {
+            const averageTime = timeSum / statsCount;
+            const hours = Math.floor(averageTime / 60);
+            const minutes = Math.round(averageTime % 60);
+            average = `${hours}:${minutes < 10 ? '0' + minutes : minutes}`;
+        } else {
+            // Outras estatísticas são somadas e divididas por (statsCount * 2), pois temos duas equipes por jogo
+            average = (statsSum[stat] / (statsCount * 2)).toFixed(2);
+        }
+
+        averageHTML += `<tr><td>${stat}</td><td>${average}</td></tr>`;
+    }
+    averageHTML += '</table>';
+
+    // Exibe as tabelas originais e a nova tabela com médias
+    document.getElementById('tablesContainer').innerHTML = allTablesHTML;
+    document.getElementById('averageContainer').innerHTML = averageHTML;
+}
+
+
+        window.onload = loadTables;
+    </script>
+</head>
+<body>
+    <h1>Dados dos Jogos</h1>
+    <div id="tablesContainer"></div>
+    <div id="averageContainer"></div>
+</body>
+</html>
